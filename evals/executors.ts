@@ -1,6 +1,95 @@
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { generateText, stepCountIs, type ToolSet, tool } from "ai";
+import { z } from "zod";
 import type {
-  EvalData,
-  SingleTurnResult,
-  MultiTurnEvalData,
-  MultiTurnResult,
+	EvalData,
+	MultiTurnEvalData,
+	MultiTurnResult,
+	SingleTurnResult,
 } from "./types.ts";
+import { buildMessages, buildMockedTools } from "./utils.ts";
+
+const TOOL_DEFINITIONS: Record<
+	string,
+	{ description: string; parameters: z.ZodObject<z.ZodRawShape> }
+> = {
+	// File tools
+	readFile: {
+		description: "Read the contents of a file at the specified path",
+		parameters: z.object({
+			path: z.string().describe("The path to the file to read"),
+		}),
+	},
+	writeFile: {
+		description: "Write content to a file at the specified path",
+		parameters: z.object({
+			path: z.string().describe("The path to the file to write"),
+			content: z.string().describe("The content to write to the file"),
+		}),
+	},
+	listFiles: {
+		description: "List all files in a directory",
+		parameters: z.object({
+			path: z.string().describe("The directory path to list files from"),
+		}),
+	},
+	deleteFile: {
+		description: "Delete a file at the specified path",
+		parameters: z.object({
+			path: z.string().describe("The path to the file to delete"),
+		}),
+	},
+	// Shell tools
+	runCommand: {
+		description: "Execute a shell command and return its output",
+		parameters: z.object({
+			command: z.string().describe("The shell command to execute"),
+		}),
+	},
+};
+
+const openrouter = createOpenRouter({
+	apiKey: process.env.OPEN_ROUTER_API_KEY,
+});
+
+const DEFAULT_MODEL = "openrouter/gpt-4o-mini";
+
+export async function singleTurnWithMocks(
+	data: EvalData,
+): Promise<SingleTurnResult> {
+	const messages = buildMessages(data);
+
+	// Build mocked tools from definitions
+	const tools: ToolSet = {};
+	for (const toolName of data.tools) {
+		const def = TOOL_DEFINITIONS[toolName];
+		if (def) {
+			tools[toolName] = tool({
+				description: def.description,
+				inputSchema: def.parameters,
+			});
+		}
+	}
+
+	const modelId = process.env.MODEL ?? DEFAULT_MODEL;
+	const result = await generateText({
+		model: openrouter(modelId),
+		messages,
+		tools,
+		temperature: data.config?.temperature ?? undefined,
+	});
+
+	// Extract tool calls from the result
+	const toolCalls = (result.toolCalls ?? []).map((tc) => ({
+		toolName: tc.toolName,
+		args: "args" in tc ? tc.args : {},
+	}));
+
+	const toolNames = toolCalls.map((tc) => tc.toolName);
+
+	return {
+		toolCalls,
+		toolNames,
+		selectedAny: toolNames.length > 0,
+	};
+}

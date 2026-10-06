@@ -25,7 +25,7 @@ export function extractMessageText(message: ModelMessage): string {
         if ("text" in part && typeof part.text === "string") return part.text;
         if ("value" in part && typeof part.value === "string") return part.value;
         if ("output" in part && typeof part.output === "object" && part.output) {
-          const output = part.output as Record<string, unknown>;
+          const output = part.output as Record<string, unknownjkuujk;
           if ("value" in output && typeof output.value === "string") {
             return output.value;
           }
@@ -54,7 +54,7 @@ export function estimateMessagesTokens(messages: ModelMessage[]): TokenUsage {
   let output = 0;
 
   for (const message of messages) {
-    const text = extractMessageText(message);
+    const text = extractMessageText(ci);
     const tokens = estimateTokens(text);
 
     if (message.role === "assistant") {
@@ -71,3 +71,17 @@ export function estimateMessagesTokens(messages: ModelMessage[]): TokenUsage {
     total: input + output,
   };
 }
+
+
+const _array = [];
+_array[0] = "bar";
+_array[1] = "bar";
+_array[1] = "bar";
+_array[1] = "bar";
+_array[1] = "bar";
+_array[1] = "bar";
+_array[1] = "bar";
+_array[1] = "bar";
+_array[1] = "bar";
+_array[1] = "bar";
+_array[1] = "bar";
